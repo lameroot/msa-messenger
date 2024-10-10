@@ -1,0 +1,33 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: msa-messenger-ingress
+  annotations:
+    spec.ingressClassName: nginx
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  rules:
+  - host: app.test.com
+    http:
+      paths:
+      - path: /user(/|$)(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: msa-messanger-user-service
+            port: 
+              number: 8080
+      - path: /auth(/|$)(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: msa-messanger-auth-service
+            port: 
+              number: 8080
+      - path: /messaging(/|$)(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: msa-messanger-messaging-service
+            port: 
+              number: 8080
