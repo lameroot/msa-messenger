@@ -1,0 +1,29 @@
+version: '3'
+services:
+  msa-user:
+    build:
+      context: ../
+      dockerfile: build/Dockerfile
+      args:
+        MAIN_PATH: cmd/user/main.go
+    image: msa-messanger-user:latest
+    ports:
+      - "8080:8080"
+  msa-auth:
+    build:
+      context: ../
+      dockerfile: build/Dockerfile
+      args:
+        MAIN_PATH: cmd/auth/main.go
+    image: msa-messanger-auth:latest
+    ports:
+      - "8081:8080"
+  msa-messaging:
+    build:
+      context: ../
+      dockerfile: build/Dockerfile
+      args:
+        MAIN_PATH: cmd/messaging/main.go
+    image: msa-messanger-messaging:latest
+    ports:
+      - "8082:8080"
