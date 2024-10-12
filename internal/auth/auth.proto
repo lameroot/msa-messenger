@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package auth;
+
+import "google/api/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+
+option go_package = "github.com/lameroot/msa-messenger/internal/auth";
+
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+  info: {
+    title: "Authentication Service API";
+    version: "1.0";
+    description: "API for user authentication and token verification";
+    contact: {
+      name: "MSA Messenger Team";
+      url: "https://github.com/lameroot/msa-messenger";
+      email: "support@msa-messenger.com";
+    };
+  };
+};
+
+service AuthService {
+  rpc VerifyToken (VerifyTokenRequest) returns (VerifyTokenResponse) {
+    option (google.api.http) = {
+      post: "/v1/auth/verify"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Verify authentication token";
+      description: "Verifies the provided authentication token and returns the user ID if valid";
+      tags: "Authentication";
+    };
+  }
+}
+
+message VerifyTokenRequest {
+  string token = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The authentication token to verify"}];
+}
+
+message VerifyTokenResponse {
+  bool valid = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "Indicates whether the token is valid"}];
+  string user_id = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The user ID associated with the token, if valid"}];
+}

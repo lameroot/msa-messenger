@@ -12,3 +12,13 @@ minikube-docker:
 	minikube image load msa-messanger-auth:latest
 	minikube image load msa-messanger-messaging:latest
 	minikube image ls --format table
+build-db:
+	docker build -t my-postgres -f build/db/Dockerfile build/db
+run-db:
+	docker run -d --name my-postgres-container -p 5432:5432 my-postgres
+stop-db:
+	docker stop my-postgres-container
+start-db:
+	docker start my-postgres-container
+remove-db:
+	docker rm my-postgres-container	
