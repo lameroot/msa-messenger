@@ -3,6 +3,7 @@ package auth
 import (
 	"database/sql"
 	"errors"
+	"log"
 	"strconv"
 	"time"
 
@@ -44,9 +45,18 @@ func (s *AuthService) Register(email, password string) (*User, error) {
 	return CreateUser(s.db, email, password)
 }
 
+func (s *AuthService) Update(id int64, nickname, avatar_url, info string) (*User, error) {
+	existingUser, _ := GetUserByNickname(s.db, nickname)
+	if existingUser != nil {
+		return nil, ErrUserAlreadyExists
+	}
+	return UpdateUser(s.db, id, nickname, avatar_url, info)
+}
+
 func (s *AuthService) Authenticate(email, password string) (*TokenPair, error) {
 	user, err := GetUserByEmail(s.db, email)
 	if err != nil {
+		log.Println("invalid email", err)
 		return nil, ErrInvalidCredentials
 	}
 

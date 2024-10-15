@@ -25,6 +25,9 @@ type User struct {
 	PasswordHash string    `json:"-"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
+	Nickname     *string   `json:"nickname"`
+	Info         *string   `json:"info"`
+	AvatarUrl    *string   `json:"avatar_url"`
 }
 
 func ValidateEmail(email string) bool {
@@ -83,13 +86,45 @@ func CreateUser(db *sql.DB, email, password string) (*User, error) {
 
 func GetUserByEmail(db *sql.DB, email string) (*User, error) {
 	user := &User{}
-	err := db.QueryRow("SELECT id, email, password_hash, created_at, updated_at FROM users WHERE email = $1", email).
-		Scan(&user.ID, &user.Email, &user.PasswordHash, &user.CreatedAt, &user.UpdatedAt)
+	err := db.QueryRow("SELECT id, email, password_hash, created_at, updated_at, nickname, avatar_url, info FROM users WHERE email = $1", email).
+		Scan(&user.ID, &user.Email, &user.PasswordHash, &user.CreatedAt, &user.UpdatedAt, &user.Nickname, &user.AvatarUrl, &user.Info)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, ErrUserNotFound
 		}
+		return nil, err
+	}
+
+	return user, nil
+}
+
+func GetUserByNickname(db *sql.DB, nickname string) (*User, error) {
+	user := &User{}
+	err := db.QueryRow("SELECT id, email, password_hash, created_at, updated_at, nickname, avatar_url, info FROM users WHERE nickname = $1", nickname).
+		Scan(&user.ID, &user.Email, &user.PasswordHash, &user.CreatedAt, &user.UpdatedAt, &user.Nickname, &user.AvatarUrl, &user.Info)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrUserNotFound
+		}
+		return nil, err
+	}
+	return user, nil
+}
+
+func UpdateUser(db *sql.DB, id int64, nickname string, avatar_url string, info string) (*User, error) {
+	user := &User{}
+	err := db.QueryRow(
+		`UPDATE users 
+		SET nickname = $1, info = $2, avatar_url = $3 
+		WHERE id = $4 
+		RETURNING id, nickname, info, avatar_url`,
+		nickname, info, avatar_url, id).
+		Scan(&user.ID, &user.Nickname, &user.Info, &user.AvatarUrl)
+
+	if err != nil {
+		log.Printf("Error update: ", err)
 		return nil, err
 	}
 

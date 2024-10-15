@@ -14,6 +14,7 @@ import (
 	_ "github.com/lib/pq"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/reflection"
 )
 
 func main() {
@@ -88,6 +89,7 @@ func main() {
 		Addr:    ":8081",
 		Handler: mux,
 	}
+	reflection.Register(grpcServer)
 
 	log.Println("Starting HTTP server on :8080, gRPC server on :50051, and gRPC-Gateway server on :8081")
 	log.Println("Swagger UI available at http://localhost:8080/swagger-ui")

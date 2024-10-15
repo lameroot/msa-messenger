@@ -52,6 +52,37 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	c.JSON(http.StatusCreated, user)
 }
 
+// Register godoc
+// @Summary Update user
+// @Description Update existsing user by id
+// @Tags user
+// @Accept json
+// @Produce json
+// @Param user body UpdateUserInput true "User Update Info"
+// @Success 200 {object} User
+// @Failure 400 {object} ErrorResponse
+// @Failure 409 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /update [put]
+func (h *AuthHandler) UpdateUser(c *gin.Context) {
+	var input UpdateUserInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	user, err := h.service.Update(input.Id, input.Nickname, input.AvatarUrl, input.Info)
+	if err != nil {
+		if err == ErrUserAlreadyExists {
+			c.JSON(http.StatusConflict, ErrorResponse{Error: "User already exists"})
+		} else {
+			c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to register user"})
+		}
+		return
+	}
+	c.JSON(http.StatusOK, user)
+}
+
 // Authenticate godoc
 // @Summary Authenticate a user
 // @Description Authenticate a user with email and password and return JWT tokens
@@ -138,6 +169,7 @@ func SetupRoutes(router *gin.Engine, handler *AuthHandler) {
 	auth := router.Group("/auth")
 	{
 		auth.POST("/register", handler.Register)
+		auth.PUT("/update", handler.UpdateUser)
 		auth.POST("/login", handler.Authenticate)
 		auth.POST("/refresh", handler.RefreshToken)
 	}
@@ -173,4 +205,11 @@ type RefreshTokenInput struct {
 // ErrorResponse represents an error response
 type ErrorResponse struct {
 	Error string `json:"error"`
+}
+
+type UpdateUserInput struct {
+	Id        int64  `json:"id" binding:"required"`
+	Nickname  string `json:"nickname"`
+	AvatarUrl string `json:"avatar_url"`
+	Info      string `json:"info"`
 }
