@@ -1,0 +1,490 @@
+definitions:
+  auth_http.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  auth_models.AuthResponse:
+    properties:
+      token:
+        $ref: '#/definitions/auth_models.Token'
+      user:
+        $ref: '#/definitions/auth_models.User'
+    type: object
+  auth_models.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        minLength: 6
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  auth_models.RefreshRequest:
+    properties:
+      refresh_token:
+        type: string
+    required:
+    - refresh_token
+    type: object
+  auth_models.RegisterRequest:
+    properties:
+      email:
+        type: string
+      nickname:
+        type: string
+      password:
+        minLength: 6
+        type: string
+    required:
+    - email
+    - nickname
+    - password
+    type: object
+  auth_models.Token:
+    properties:
+      access_token:
+        type: string
+      refresh_token:
+        type: string
+    type: object
+  auth_models.TokenResponse:
+    properties:
+      token:
+        $ref: '#/definitions/auth_models.Token'
+    type: object
+  auth_models.UpdateUserRequest:
+    properties:
+      avatar_url:
+        type: string
+      email:
+        type: string
+      info:
+        type: string
+      password:
+        minLength: 6
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  auth_models.User:
+    properties:
+      avatar_url:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      info:
+        type: string
+      nickname:
+        type: string
+    type: object
+  auth_models.UserResponse:
+    properties:
+      user:
+        $ref: '#/definitions/auth_models.User'
+    type: object
+  messaging_http.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  messaging_models.GetMessagesRequest:
+    properties:
+      count_messages:
+        type: integer
+      friend_id:
+        type: string
+    type: object
+  messaging_models.Message:
+    properties:
+      message:
+        type: string
+      read:
+        type: boolean
+      receiver_id:
+        type: string
+      sender_id:
+        type: string
+      sent_time:
+        type: integer
+    type: object
+  messaging_models.SendMessageRequest:
+    properties:
+      friend_id:
+        type: string
+      message:
+        type: string
+      sent_time:
+        type: integer
+    type: object
+  messaging_models.SendMessageResponse:
+    properties:
+      delivery_time:
+        type: integer
+      success:
+        type: boolean
+    type: object
+  user_http.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  user_models.AcceptFriendRequest:
+    properties:
+      friend_id:
+        type: string
+    type: object
+  user_models.AddUserToFriendsRequest:
+    properties:
+      friend_id:
+        type: string
+    type: object
+  user_models.AddUserToFriendsResponse:
+    properties:
+      friendship_status:
+        $ref: '#/definitions/user_models.FriendshipStatus'
+    type: object
+  user_models.DeleteUserFromFriendsRequest:
+    properties:
+      friend_id:
+        type: string
+    type: object
+  user_models.Friend:
+    properties:
+      friend_id:
+        type: string
+      friendship_status:
+        $ref: '#/definitions/user_models.FriendshipStatus'
+    type: object
+  user_models.FriendshipStatus:
+    enum:
+    - pending
+    - accepted
+    - rejected
+    type: string
+    x-enum-varnames:
+    - Pending
+    - Accepted
+    - Rejected
+  user_models.RejectFriendRequest:
+    properties:
+      friend_id:
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate a user and return access and refresh tokens
+      parameters:
+      - description: Login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth_models.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Authentication successful
+          schema:
+            $ref: '#/definitions/auth_models.AuthResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/auth_http.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/auth_http.ErrorResponse'
+      summary: User login
+      tags:
+      - auth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Generate a new access token using a refresh token
+      parameters:
+      - description: Refresh token request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth_models.RefreshRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: New access token
+          schema:
+            $ref: '#/definitions/auth_models.TokenResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/auth_http.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/auth_http.ErrorResponse'
+      summary: Refresh authentication token
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Create a new user account
+      parameters:
+      - description: Registration information
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth_models.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: User successfully registered
+          schema:
+            $ref: '#/definitions/auth_models.UserResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/auth_http.ErrorResponse'
+        "409":
+          description: User already exists or nickname taken
+          schema:
+            $ref: '#/definitions/auth_http.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/auth_http.ErrorResponse'
+      summary: Register a new user
+      tags:
+      - auth
+  /auth/update:
+    put:
+      consumes:
+      - application/json
+      description: Update the avatar URL and info for an authenticated user
+      parameters:
+      - description: Update user request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth_models.UpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Updated user information
+          schema:
+            $ref: '#/definitions/auth_models.User'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/auth_http.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/auth_http.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/auth_http.ErrorResponse'
+      summary: Update user information
+      tags:
+      - auth
+  /friends:
+    delete:
+      consumes:
+      - application/json
+      description: Remove a user from the current user's friends list
+      parameters:
+      - description: Delete user from friends request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/user_models.DeleteUserFromFriendsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/user_http.ErrorResponse'
+      summary: Delete user from friends
+      tags:
+      - friends
+    get:
+      description: Get the list of friends for the current user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/user_models.Friend'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/user_http.ErrorResponse'
+      summary: Get friends
+      tags:
+      - friends
+    post:
+      consumes:
+      - application/json
+      description: Add a user to the current user's friends list
+      parameters:
+      - description: Add user to friends request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/user_models.AddUserToFriendsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/user_models.AddUserToFriendsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/user_http.ErrorResponse'
+      summary: Add user to friends
+      tags:
+      - friends
+  /friends/accept:
+    post:
+      consumes:
+      - application/json
+      description: Accept a friend request from another user
+      parameters:
+      - description: Accept friend request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/user_models.AcceptFriendRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/user_http.ErrorResponse'
+      summary: Accept friend request
+      tags:
+      - friends
+  /friends/reject:
+    post:
+      consumes:
+      - application/json
+      description: Reject a friend request from another user
+      parameters:
+      - description: Reject friend request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/user_models.RejectFriendRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/user_http.ErrorResponse'
+      summary: Reject friend request
+      tags:
+      - friends
+  /messaging/messages:
+    post:
+      consumes:
+      - application/json
+      description: Retrieve messages for the authenticated user based on provided
+        criteria
+      parameters:
+      - description: Message retrieval criteria
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/messaging_models.GetMessagesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Messages retrieved successfully
+          schema:
+            $ref: '#/definitions/messaging_models.Message'
+        "400":
+          description: Bad request or user not found
+          schema:
+            $ref: '#/definitions/messaging_http.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/messaging_http.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get messages for a user
+      tags:
+      - messaging
+  /messaging/send:
+    post:
+      consumes:
+      - application/json
+      description: Send a message from the authenticated user to another user
+      parameters:
+      - description: Message details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/messaging_models.SendMessageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Message sent successfully
+          schema:
+            $ref: '#/definitions/messaging_models.SendMessageResponse'
+        "400":
+          description: Bad request or user not found
+          schema:
+            $ref: '#/definitions/messaging_http.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/messaging_http.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Send a message
+      tags:
+      - messaging
+swagger: "2.0"

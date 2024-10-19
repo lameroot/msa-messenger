@@ -12,3 +12,8 @@ minikube-docker:
 	minikube image load msa-messanger-auth:latest
 	minikube image load msa-messanger-messaging:latest
 	minikube image ls --format table
+
+swag-gen:
+	swag init -g cmd/auth/main.go
+	swag init -g cmd/user/main.go
+	swag init -g cmd/messaging/main.go

@@ -1,36 +1,62 @@
 package main
 
 import (
-	"net/http"
+	"log"
+	"os"
+	"path/filepath"
+	"time"
 
-	"github.com/gin-gonic/gin"
+	adapters_token "github.com/lameroot/msa-messenger/internal/auth/adapters/token"
+	auth_http "github.com/lameroot/msa-messenger/internal/auth/controller/http"
+	auth_models "github.com/lameroot/msa-messenger/internal/auth/models"
+	auth_repository_psql "github.com/lameroot/msa-messenger/internal/auth/repository/auth/psql"
+	auth_usecase "github.com/lameroot/msa-messenger/internal/auth/usecase"
+
+	"github.com/joho/godotenv"
+
+	_ "github.com/lameroot/msa-messenger/docs" // This is where Swag has generated docs.go
 )
 
+// @title Authentication Service API
+// @version 1.0
+// @description This is the API for the authentication service of MSA Messenger.
+// @host localhost:8080
+// @BasePath /
 func main() {
-	// Auth module main function
-	r := gin.Default()
+	// Init config
+	dir, _ := os.Getwd()
+	envPath := filepath.Join(dir, "configs", ".env")
+	err := godotenv.Load(envPath)
+	if err != nil {
+		log.Fatal("Error loading .env file: ", err)
+	}
 
-	// Readiness probe
-	r.GET("/ready", authReadinessHandler)
+	// Initialize the auth service
+	tokenConfig := auth_models.TokenConfig{
+		AccessTokenSecret:  os.Getenv("JWT_ACCESS_TOKEN_SECRET"),
+		RefreshTokenSecret: os.Getenv("JWT_REFRESH_TOKEN_SECRET"),
+		AccessTokenExpiry:  15 * time.Minute,
+		RefreshTokenExpiry: 7 * 24 * time.Hour,
+	}
+	tokenRepository := adapters_token.NewJwtInMemoryTokenRepository(tokenConfig)
 
-	// Liveness probe
-	r.GET("/health", authLivenessHandler)
+	// Init database
+	dbURL := os.Getenv("DB_POSTGRES_URL")
+	persistentRepository, err := auth_repository_psql.NewPostgresAuthRepository(dbURL)
+	if err != nil {
+		log.Fatalf("Failed to initialize auth service: %v", err)
+	}
 
-	// Запуск сервера на порту 8080
-	r.Run(":8080")
-}
+	authService := auth_usecase.NewAuthUseCase(tokenRepository, persistentRepository)
 
-func authReadinessHandler(c *gin.Context) {
-	// Здесь должна быть логика проверки готовности модуля Auth
-	// Например, проверка подключения к базе данных пользователей
-	c.JSON(http.StatusOK, gin.H{
-		"status": "auth module ready",
-	})
-}
+	// Initialize the auth handler
+	authHandler := auth_http.NewAuthHandler(authService)
 
-func authLivenessHandler(c *gin.Context) {
-	// Здесь должна быть логика проверки жизнеспособности модуля Auth
-	c.JSON(http.StatusOK, gin.H{
-		"status": "auth module alive",
-	})
+	// Create http router
+	router := auth_http.NewRouter(authHandler)
+
+	// Start the server
+	if err := router.Run(":8080"); err != nil {
+		log.Fatalf("Failed to start auth server: %v", err)
+	}
 }

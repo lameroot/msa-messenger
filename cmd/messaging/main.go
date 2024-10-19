@@ -1,36 +1,43 @@
 package main
 
 import (
-	"net/http"
+	"log"
+	"os"
+	"path/filepath"
 
-	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
+	messaging_notification "github.com/lameroot/msa-messenger/internal/messaging/adapters/notification"
+	messaging_http "github.com/lameroot/msa-messenger/internal/messaging/controller"
+	messaging_repository_psql "github.com/lameroot/msa-messenger/internal/messaging/repository/messaging/psql"
+	messaging_usecase "github.com/lameroot/msa-messenger/internal/messaging/usecase"
 )
 
 func main() {
-	// Messaging module main function
-	r := gin.Default()
+	// Init config
+	dir, _ := os.Getwd()
+	envPath := filepath.Join(dir, "configs", ".env")
+	err := godotenv.Load(envPath)
+	if err != nil {
+		log.Fatal("Error loading .env file: ", err)
+	}
 
-	// Readiness probe
-	r.GET("/ready", messagingReadinessHandler)
+	// Init database
+	dbURL := os.Getenv("DB_POSTGRES_URL")
+	persistentRepository, err := messaging_repository_psql.NewPostgresMessagingRepository(dbURL)
+	if err != nil {
+		log.Fatalf("Failed to initialize auth service: %v", err)
+	}
 
-	// Liveness probe
-	r.GET("/health", messagingLivenessHandler)
+	// Init notification service
+	notificationService := messaging_notification.NewInMemmoryNotificationService()
 
-	// Запуск сервера на порту 8080
-	r.Run(":8080")
-}
+	messagingService := messaging_usecase.NewMessagingService(persistentRepository, notificationService)
+	messagingHandler := messaging_http.NewMessagingHandler(messagingService)
+	messagingRouter := messaging_http.NewRouter(messagingHandler)
 
-func messagingReadinessHandler(c *gin.Context) {
-	// Здесь должна быть логика проверки готовности модуля Messaging
-	// Например, проверка подключения к брокеру сообщений
-	c.JSON(http.StatusOK, gin.H{
-		"status": "messaging module ready",
-	})
-}
+	// Start the server
+	if err := messagingRouter.Run(":8082"); err != nil {
+		log.Fatalf("Failed to start messaing server: %v", err)
+	}
 
-func messagingLivenessHandler(c *gin.Context) {
-	// Здесь должна быть логика проверки жизнеспособности модуля Messaging
-	c.JSON(http.StatusOK, gin.H{
-		"status": "messaging module alive",
-	})
 }

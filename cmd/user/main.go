@@ -1,40 +1,42 @@
 package main
 
 import (
-	"net/http"
+	"log"
+	"os"
+	"path/filepath"
 
-	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
+	user_http "github.com/lameroot/msa-messenger/internal/user/controller/http"
+	user_repository_psql "github.com/lameroot/msa-messenger/internal/user/repository/user/psql"
+	user_usecase "github.com/lameroot/msa-messenger/internal/user/usecase"
 )
 
 func main() {
-	r := gin.Default()
+	// Init config
+	dir, _ := os.Getwd()
+	envPath := filepath.Join(dir, "configs", ".env")
+	err := godotenv.Load(envPath)
+	if err != nil {
+		log.Fatal("Error loading .env file: ", err)
+	}
 
-	// Readiness probe
-	r.GET("/ready", readinessHandler)
+	// Init database
+	dbURL := os.Getenv("DB_POSTGRES_URL")
+	persistentRepository, err := user_repository_psql.NewPostgresUserRepository(dbURL)
+	if err != nil {
+		log.Fatalf("Failed to initialize auth service: %v", err)
+	}
 
-	// Liveness probe
-	r.GET("/health", livenessHandler)
+	userService := user_usecase.NewUserService(persistentRepository)
 
-	// Запуск сервера на порту 8080
-	r.Run(":8080")
-}
+	// Create user handler
+	userHandler := user_http.NewUserHandler(userService)
 
-func readinessHandler(c *gin.Context) {
-	// Здесь вы можете добавить логику для проверки готовности вашего приложения
-	// Например, проверка подключения к базе данных, доступность внешних сервисов и т.д.
+	// Create server
+	router := user_http.NewRouter(userHandler)
 
-	// В этом примере мы просто возвращаем успешный статус
-	c.JSON(http.StatusOK, gin.H{
-		"status": "user module ready",
-	})
-}
-
-func livenessHandler(c *gin.Context) {
-	// Здесь вы можете добавить логику для проверки жизнеспособности вашего приложения
-	// Например, проверка критических компонентов, отсутствие deadlock'ов и т.д.
-
-	// В этом примере мы просто возвращаем успешный статус
-	c.JSON(http.StatusOK, gin.H{
-		"status": "user module alive",
-	})
+	// Start the server
+	if err := router.Run(":8081"); err != nil {
+		log.Fatalf("Failed to start user server: %v", err)
+	}
 }
