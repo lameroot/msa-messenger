@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package auth_proto;
+
+option go_package = "pkg/api/auth-proto";
+
+message TokenVerificationRequest {
+    string token = 1;
+}
+
+message TokenVerificationResponse {
+    bool verified = 1;
+    string user_id = 2;
+    int64 expiration_time = 3;
+}

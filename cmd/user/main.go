@@ -9,6 +9,9 @@ import (
 	user_http "github.com/lameroot/msa-messenger/internal/user/controller/http"
 	user_repository_psql "github.com/lameroot/msa-messenger/internal/user/repository/user/psql"
 	user_usecase "github.com/lameroot/msa-messenger/internal/user/usecase"
+	auth_proto "github.com/lameroot/msa-messenger/pkg/api/auth"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func main() {
@@ -29,11 +32,21 @@ func main() {
 
 	userService := user_usecase.NewUserService(persistentRepository)
 
+	// Create grpc client
+	hostPortAuthGrpcServer := os.Getenv("AUTH_GRPC_HOST_PORT")
+	conn, err := grpc.NewClient(hostPortAuthGrpcServer, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("did not connect: %v", err)
+	}
+	defer conn.Close()
+	log.Default().Println("Grpc auth client successfully created and connected to host ", hostPortAuthGrpcServer)
+	authClient := auth_proto.NewTokenVerifyServiceClient(conn)
+
 	// Create user handler
 	userHandler := user_http.NewUserHandler(userService)
 
 	// Create server
-	router := user_http.NewRouter(userHandler)
+	router := user_http.NewRouter(userHandler, &authClient)
 
 	// Start the server
 	if err := router.Run(":8081"); err != nil {

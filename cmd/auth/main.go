@@ -2,15 +2,21 @@ package main
 
 import (
 	"log"
+	"net"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	adapters_token "github.com/lameroot/msa-messenger/internal/auth/adapters/token"
 	auth_http "github.com/lameroot/msa-messenger/internal/auth/controller/http"
 	auth_models "github.com/lameroot/msa-messenger/internal/auth/models"
 	auth_repository_psql "github.com/lameroot/msa-messenger/internal/auth/repository/auth/psql"
+	auth_grpc "github.com/lameroot/msa-messenger/internal/auth/server"
 	auth_usecase "github.com/lameroot/msa-messenger/internal/auth/usecase"
+	auth_proto "github.com/lameroot/msa-messenger/pkg/api/auth"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 
 	"github.com/joho/godotenv"
 
@@ -55,8 +61,38 @@ func main() {
 	// Create http router
 	router := auth_http.NewRouter(authHandler)
 
+	var wg sync.WaitGroup
+	wg.Add(1)
 	// Start the server
-	if err := router.Run(":8080"); err != nil {
-		log.Fatalf("Failed to start auth server: %v", err)
-	}
+	go func() {
+		defer wg.Done()
+
+		if err := router.Run(":8080"); err != nil {
+			log.Fatalf("Failed to start auth server: %v", err)
+		}
+	}()
+
+	// Init gRPC Server
+	hostPortAuthGrpcServer := os.Getenv("AUTH_GRPC_HOST_PORT")
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		lis, err := net.Listen("tcp", hostPortAuthGrpcServer)
+		if err != nil {
+			log.Fatalf("failed to listen: %v", err)
+		}
+
+		impl := auth_grpc.NewServer(tokenRepository)
+		server := grpc.NewServer()
+		auth_proto.RegisterTokenVerifyServiceServer(server, impl)
+		reflection.Register(server)
+		log.Printf("server listening at %v", lis.Addr())
+		if err := server.Serve(lis); err != nil {
+			log.Fatalf("failed to serve: %v", err)
+		}
+	}()
+
+	wg.Wait()
+
 }

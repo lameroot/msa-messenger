@@ -1,18 +1,20 @@
 package messaging_http
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	auth_proto "github.com/lameroot/msa-messenger/pkg/api/auth"
 )
 
-func NewRouter(messagingHandler *MessagingHandler) *gin.Engine {
+func NewRouter(messagingHandler *MessagingHandler, authClient *auth_proto.TokenVerifyServiceClient) *gin.Engine {
 	var engine = gin.New()
 	// Options
 	engine.Use(gin.Logger())
 	engine.Use(gin.Recovery())
-	engine.Use(AuthRequiredMiddleware())
+	engine.Use(AuthRequiredMiddleware(*authClient))
 
 	engine.POST("/send", messagingHandler.SendMessage)
 	engine.GET("/messages", messagingHandler.GetMessages)
@@ -26,18 +28,39 @@ func NewRouter(messagingHandler *MessagingHandler) *gin.Engine {
 	return engine
 }
 
-func AuthRequiredMiddleware() gin.HandlerFunc {
+func AuthRequiredMiddleware(authClient auth_proto.TokenVerifyServiceClient) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if c.GetHeader("Authorization") != "123" { //todo auth
-			c.AbortWithStatusJSON(401, gin.H{"error": "Unauthorized"})
+		token := c.GetHeader("Authorization")
+		if token == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header is missing"})
+			c.Abort()
 			return
 		}
-		IDUser, err := uuid.Parse("cf197cc1-3e93-476c-8b38-08f52cbe5a46")
+		req := &auth_proto.TokenVerificationRequest{
+			Token: token,
+		}
+		verifyResponse, err := authClient.VerifyToken(context.Background(), req)
 		if err != nil {
 			c.AbortWithStatusJSON(401, gin.H{"error": "Unauthorized"})
 			return
 		}
-		c.Set("user_id", IDUser) //todo auth
+		if !verifyResponse.Verified {
+			c.AbortWithStatusJSON(401, gin.H{"error": "Unauthorized"})
+			return
+		}
+
+		// if c.GetHeader("Authorization") != "123" { //todo auth
+		// 	c.AbortWithStatusJSON(401, gin.H{"error": "Unauthorized"})
+		// 	return
+		// }
+		// IDUser, err := uuid.Parse("cf197cc1-3e93-476c-8b38-08f52cbe5a46")
+
+		IDUser, err := uuid.Parse(verifyResponse.UserId)
+		if err != nil {
+			c.AbortWithStatusJSON(401, gin.H{"error": "Unauthorized"})
+			return
+		}
+		c.Set("user_id", IDUser)
 		c.Next()
 	}
 }
