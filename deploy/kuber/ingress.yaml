@@ -14,20 +14,20 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: msa-messanger-user-service
+            name: msa-messenger-user-service
             port: 
               number: 8080
       - path: /auth(/|$)(.*)
         pathType: Prefix
         backend:
           service:
-            name: msa-messanger-auth-service
+            name: msa-messenger-auth-service
             port: 
               number: 8080
       - path: /messaging(/|$)(.*)
         pathType: Prefix
         backend:
           service:
-            name: msa-messanger-messaging-service
+            name: msa-messenger-messaging-service
             port: 
               number: 8080

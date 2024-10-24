@@ -1,36 +1,64 @@
 package main
 
 import (
-	"net/http"
+	"log"
+	"os"
+	"path/filepath"
 
-	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
+	messaging_notification "github.com/lameroot/msa-messenger/internal/messaging/adapters/notification"
+	messaging_http "github.com/lameroot/msa-messenger/internal/messaging/controller"
+	messaging_repository_psql "github.com/lameroot/msa-messenger/internal/messaging/repository/messaging/psql"
+	messaging_usecase "github.com/lameroot/msa-messenger/internal/messaging/usecase"
+	auth_proto "github.com/lameroot/msa-messenger/pkg/api/auth"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
+func loadEnv() {
+	// Init config
+	dir, _ := os.Getwd()
+	envPath := filepath.Join(dir, "configs", ".env")
+	err := godotenv.Load(envPath)
+	if err != nil {
+		log.Default().Print("Error loading .env file: ", err)
+	}
+}
+
 func main() {
-	// Messaging module main function
-	r := gin.Default()
+	// Init config
+	log.Default().Print("Start load configs for messaging")
+	loadEnv()
+	log.Default().Print("Loaded configs: ", os.Getenv("DB_POSTGRES_URL"))
 
-	// Readiness probe
-	r.GET("/ready", messagingReadinessHandler)
+	// Init database
+	dbURL := os.Getenv("DB_POSTGRES_URL")
+	persistentRepository, err := messaging_repository_psql.NewPostgresMessagingRepository(dbURL)
+	if err != nil {
+		log.Fatalf("Failed to initialize auth service: %v", err)
+	}
 
-	// Liveness probe
-	r.GET("/health", messagingLivenessHandler)
+	// Init notification service
+	notificationService := messaging_notification.NewInMemmoryNotificationService()
 
-	// Запуск сервера на порту 8080
-	r.Run(":8080")
-}
+	// Create grpc client
+	hostPortAuthGrpcServer := os.Getenv("AUTH_GRPC_SERVER")
+	conn, err := grpc.NewClient(hostPortAuthGrpcServer, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("did not connect: %v", err)
+	}
+	defer conn.Close()
+	log.Default().Println("Grpc auth client successfully created and connected to host ", hostPortAuthGrpcServer)
+	authClient := auth_proto.NewTokenVerifyServiceClient(conn)
 
-func messagingReadinessHandler(c *gin.Context) {
-	// Здесь должна быть логика проверки готовности модуля Messaging
-	// Например, проверка подключения к брокеру сообщений
-	c.JSON(http.StatusOK, gin.H{
-		"status": "messaging module ready",
-	})
-}
+	messagingService := messaging_usecase.NewMessagingService(persistentRepository, notificationService)
+	messagingHandler := messaging_http.NewMessagingHandler(messagingService)
+	messagingRouter := messaging_http.NewRouter(messagingHandler, &authClient)
 
-func messagingLivenessHandler(c *gin.Context) {
-	// Здесь должна быть логика проверки жизнеспособности модуля Messaging
-	c.JSON(http.StatusOK, gin.H{
-		"status": "messaging module alive",
-	})
+	// Start the server
+	hostPortMessagingHttpServer := os.Getenv("MESSAGING_HTTP_HOST_PORT")
+	if err := messagingRouter.Run(hostPortMessagingHttpServer); err != nil {
+		log.Fatalf("Failed to start messaing server: %v", err)
+	}
+
 }
