@@ -1,16 +1,22 @@
 build-all:
-	docker build --tag msa-messanger-user --build-arg MAIN_PATH=cmd/user/*.go --file build/Dockerfile .
-	docker build --tag msa-messanger-auth --build-arg MAIN_PATH=cmd/auth/*.go --file build/Dockerfile .
-	docker build --tag msa-messanger-messaging --build-arg MAIN_PATH=cmd/messaging/*.go --file build/Dockerfile .
+	docker build --tag msa-messenger-db --file build/db/Dockerfile .
+	docker build --tag msa-messenger-auth --file build/auth/Dockerfile .
+	docker build --tag msa-messenger-user --file build/user/Dockerfile .
+	docker build --tag msa-messenger-messaging --file build/messaging/Dockerfile .
 delete-all:
-	docker image rm --force msa-messanger-auth msa-messanger-user msa-messanger-messaging
+	docker image rm --force msa-messenger-auth msa-messenger-user msa-messenger-messaging
 run-all:
 	docker-compose -f build/docker-compose.yml up --build
 minikube-docker:
 	eval $(minikube docker-env)
-	minikube image load msa-messanger-user:latest
-	minikube image load msa-messanger-auth:latest
-	minikube image load msa-messanger-messaging:latest
+	minikube ssh -- docker rmi -f msa-messenger-db:latest
+	minikube ssh -- docker rmi -f msa-messenger-auth:latest
+	minikube ssh -- docker rmi -f msa-messenger-user:latest
+	minikube ssh -- docker rmi -f msa-messenger-messaging:latest
+	minikube image load msa-messenger-db:latest
+	minikube image load msa-messenger-auth:latest
+	minikube image load msa-messenger-user:latest
+	minikube image load msa-messenger-messaging:latest
 	minikube image ls --format table
 
 swag-gen:
@@ -51,7 +57,11 @@ PKG_PROTO_PATH := $(CURDIR)/pkg/
 	GOBIN=$(LOCAL_BIN) go mod tidy
 
 # Генерация кода из protobuf
-generate: .bin-deps .protoc-generate .tidy		
+generate: .bin-deps .protoc-generate .tidy
+
+# Сборка приложения
+build:
+	CGO_ENABLED=0 go build -v -o $(LOCAL_BIN) ./cmd/user
 
 # Объявляем, что текущие команды не являются файлами и
 # интсрументируем Makefile не искать изменения в файловой системе

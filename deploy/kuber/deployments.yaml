@@ -1,21 +1,24 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: msa-messanger-user-deployment
+  name: msa-messenger-auth-deployment
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: msa-messanger-user
+      app: msa-messenger-auth
   template:
     metadata:
       labels:
-        app: msa-messanger-user
+        app: msa-messenger-auth
     spec:
       containers:
-      - name: msa-messanger-user
+      - name: msa-messenger-auth
+        image: msa-messenger-auth:latest
         imagePullPolicy: "Never"
-        image: msa-messanger-user:latest
+        envFrom:
+        - configMapRef:
+            name: msa-messenger-config
         ports:
         - containerPort: 8080
         resources:
@@ -25,7 +28,7 @@ spec:
           requests:
             memory: "1024Mi"
             cpu: "5m"
-  strategy: 
+  strategy:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
@@ -34,21 +37,24 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: msa-messanger-auth-deployment
+  name: msa-messenger-user-deployment
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: msa-messanger-auth
+      app: msa-messenger-user
   template:
     metadata:
       labels:
-        app: msa-messanger-auth
+        app: msa-messenger-user
     spec:
       containers:
-      - name: msa-messanger-auth
-        image: msa-messanger-auth:latest
+      - name: msa-messenger-user
         imagePullPolicy: "Never"
+        image: msa-messenger-user:latest
+        envFrom:
+        - configMapRef:
+            name: msa-messenger-config
         ports:
         - containerPort: 8080
         resources:
@@ -58,7 +64,7 @@ spec:
           requests:
             memory: "1024Mi"
             cpu: "5m"
-  strategy: 
+  strategy:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
@@ -67,21 +73,24 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: msa-messanger-messaging-deployment
+  name: msa-messenger-messaging-deployment
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: msa-messanger-messaging
+      app: msa-messenger-messaging
   template:
     metadata:
       labels:
-        app: msa-messanger-messaging
+        app: msa-messenger-messaging
     spec:
       containers:
-      - name: msa-messanger-messaging
+      - name: msa-messenger-messaging
         imagePullPolicy: "Never"
-        image: msa-messanger-messaging:latest
+        image: msa-messenger-messaging:latest
+        envFrom:
+        - configMapRef:
+            name: msa-messenger-config
         ports:
         - containerPort: 8080
         resources:
@@ -91,7 +100,7 @@ spec:
           requests:
             memory: "1024Mi"
             cpu: "5m"
-  strategy: 
+  strategy:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1

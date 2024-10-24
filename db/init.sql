@@ -10,9 +10,9 @@ CREATE TABLE users (
 );
 
 CREATE TABLE friendships (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id),
-    friend_id INTEGER REFERENCES users(id),
+    id VARCHAR(36) PRIMARY KEY,
+    user_id VARCHAR(36) REFERENCES users(id),
+    friend_id VARCHAR(36) REFERENCES users(id),
     status VARCHAR(20) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

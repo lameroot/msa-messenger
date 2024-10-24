@@ -1,35 +1,39 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: msa-messanger-user-service
+  name: msa-messenger-auth-service
 spec:
   selector:
-    app: msa-messanger-user
+    app: msa-messenger-auth
   type: ClusterIP
   ports:
     - port: 8080
       targetPort: 8080
+      name: http
+    - port: 8090
+      targetPort: 8090
+      name: grpc
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: msa-messanger-auth-service
+  name: msa-messenger-user-service
 spec:
   selector:
-    app: msa-messanger-auth
+    app: msa-messenger-user
   type: ClusterIP
   ports:
     - port: 8080
-      targetPort: 8080
+      targetPort: 8081
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: msa-messanger-messaging-service
+  name: msa-messenger-messaging-service
 spec:
   selector:
-    app: msa-messanger-messaging
+    app: msa-messenger-messaging
   type: ClusterIP
   ports:
     - port: 8080
-      targetPort: 8080
+      targetPort: 8082

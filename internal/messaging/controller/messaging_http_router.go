@@ -14,16 +14,24 @@ func NewRouter(messagingHandler *MessagingHandler, authClient *auth_proto.TokenV
 	// Options
 	engine.Use(gin.Logger())
 	engine.Use(gin.Recovery())
-	engine.Use(AuthRequiredMiddleware(*authClient))
 
-	engine.POST("/send", messagingHandler.SendMessage)
-	engine.GET("/messages", messagingHandler.GetMessages)
+	notAuthGroup := engine.Group("/")
+	{
+		// Readiness probe
+		notAuthGroup.GET("/ready", messagingReadinessHandler)
 
-	// Readiness probe
-	engine.GET("/ready", messagingReadinessHandler)
+		// Liveness probe
+		notAuthGroup.GET("/health", messagingLivenessHandler)
+	}
 
-	// Liveness probe
-	engine.GET("/health", messagingLivenessHandler)
+	authGroup := engine.Group("/")
+	{
+		authGroup.Use(AuthRequiredMiddleware(*authClient))
+
+		authGroup.POST("/send", messagingHandler.SendMessage)
+		authGroup.GET("/messages", messagingHandler.GetMessages)
+	}
+
 
 	return engine
 }

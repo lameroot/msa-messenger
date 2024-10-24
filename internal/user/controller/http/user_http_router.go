@@ -14,20 +14,26 @@ func NewRouter(userHandler *UserHandler, authClient *auth_proto.TokenVerifyServi
 	// Options
 	engine.Use(gin.Logger())
 	engine.Use(gin.Recovery())
-	engine.Use(AuthRequiredMiddleware(*authClient))
 
-	// Routes
-	engine.GET("/friends", userHandler.GetFriends)
-	engine.POST("/friends", userHandler.AddUserToFriends)
-	engine.DELETE("/friends", userHandler.DeleteUserFromFriends)
-	engine.POST("/friendship", userHandler.AcceptFriend)
-	engine.DELETE("/friendship", userHandler.RejectFriend)
+	notAuthGroup := engine.Group("/")
+	{
+		// Readiness probe
+		notAuthGroup.GET("/ready", readinessHandler)	
+		// Liveness probe
+		notAuthGroup.GET("/health", livenessHandler)
+	}
+	
+	authGroup := engine.Group("/")
+	{
+		authGroup.Use(AuthRequiredMiddleware(*authClient))
 
-	// Readiness probe
-	engine.GET("/ready", readinessHandler)
-
-	// Liveness probe
-	engine.GET("/health", livenessHandler)
+		// Routes
+		authGroup.GET("/friends", userHandler.GetFriends)
+		authGroup.POST("/friends", userHandler.AddUserToFriends)
+		authGroup.DELETE("/friends", userHandler.DeleteUserFromFriends)
+		authGroup.POST("/friendship", userHandler.AcceptFriend)
+		authGroup.DELETE("/friendship", userHandler.RejectFriend)
+	}
 
 	return engine
 }

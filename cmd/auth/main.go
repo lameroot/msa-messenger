@@ -23,6 +23,16 @@ import (
 	_ "github.com/lameroot/msa-messenger/docs" // This is where Swag has generated docs.go
 )
 
+func loadEnv() {
+	// Init config
+	dir, _ := os.Getwd()
+	envPath := filepath.Join(dir, "configs", ".env")
+	err := godotenv.Load(envPath)
+	if err != nil {
+		log.Default().Print("Error loading .env file: ", err)
+	}
+}
+
 // @title Authentication Service API
 // @version 1.0
 // @description This is the API for the authentication service of MSA Messenger.
@@ -30,12 +40,8 @@ import (
 // @BasePath /
 func main() {
 	// Init config
-	dir, _ := os.Getwd()
-	envPath := filepath.Join(dir, "configs", ".env")
-	err := godotenv.Load(envPath)
-	if err != nil {
-		log.Fatal("Error loading .env file: ", err)
-	}
+	loadEnv()
+	log.Default().Print("Loaded configs: ", os.Getenv("DB_POSTGRES_URL"))
 
 	// Initialize the auth service
 	tokenConfig := auth_models.TokenConfig{
@@ -45,6 +51,7 @@ func main() {
 		RefreshTokenExpiry: 7 * 24 * time.Hour,
 	}
 	tokenRepository := adapters_token.NewJwtInMemoryTokenRepository(tokenConfig)
+	log.Default().Print("Loaded JWT config")
 
 	// Init database
 	dbURL := os.Getenv("DB_POSTGRES_URL")
@@ -64,10 +71,11 @@ func main() {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	// Start the server
+	hostPortAuthHttpServer := os.Getenv("AUTH_HTTP_HOST_PORT")
 	go func() {
 		defer wg.Done()
 
-		if err := router.Run(":8080"); err != nil {
+		if err := router.Run(hostPortAuthHttpServer); err != nil {
 			log.Fatalf("Failed to start auth server: %v", err)
 		}
 	}()
