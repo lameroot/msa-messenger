@@ -4,9 +4,11 @@ go 1.22.2
 
 require (
 	github.com/gin-gonic/gin v1.10.0
+	github.com/gojuno/minimock/v3 v3.4.1
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/uuid v1.6.0
 	github.com/lib/pq v1.10.9
+	github.com/stretchr/testify v1.9.0
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.6.0
 	github.com/swaggo/swag v1.16.3
@@ -14,7 +16,12 @@ require (
 	google.golang.org/grpc v1.67.1
 )
 
-require google.golang.org/genproto/googleapis/rpc v0.0.0-20240814211410-ddb44dafa142 // indirect
+require (
+	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/stretchr/objx v0.5.2 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240814211410-ddb44dafa142 // indirect
+)
 
 require (
 	github.com/KyleBanks/depth v1.2.1 // indirect

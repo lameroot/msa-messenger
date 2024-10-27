@@ -249,3 +249,31 @@ curl --location --request GET 'http://app.test.com/messaging/messages' \
   }
 ]
 ```
+
+## Testing
+Mockery
+```
+go install github.com/vektra/mockery/v2@latest
+```
+
+### Generate mocks
+```
+go generate ./...
+```
+
+### Тесты
+1. Важно указать в начале теста t.Parallel()
+2. Создаем type args struct {} , которая будет описывать переменные для запроса метода, который тестируем
+3. tests := []struct{
+    name string //название теста
+    args args //аргументы
+    want *тип ответа //какой ответ будет возвращаться 
+    assertErr assert.ErrorAssertionFunc //какая будет ошибка возвращаться
+    mock func(t *testing.T) //вернуть объект с мокированными сущностями
+}
+### Запускаем тесты
+
+Minimock
+```
+go install github.com/gojuno/minimock/v3/cmd/minimock@latest
+```
