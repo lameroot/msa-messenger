@@ -5,11 +5,10 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
-	auth_proto "github.com/lameroot/msa-messenger/pkg/api/auth"
+	auth_verify_service "github.com/lameroot/msa-messenger/pkg/auth"
 )
 
-func NewRouter(messagingHandler *MessagingHandler, authClient *auth_proto.TokenVerifyServiceClient) *gin.Engine {
+func NewRouter(messagingHandler *MessagingHandler, authClient *auth_verify_service.AuthVerifyService) *gin.Engine {
 	var engine = gin.New()
 	// Options
 	engine.Use(gin.Logger())
@@ -26,7 +25,7 @@ func NewRouter(messagingHandler *MessagingHandler, authClient *auth_proto.TokenV
 
 	authGroup := engine.Group("/")
 	{
-		authGroup.Use(AuthRequiredMiddleware(*authClient))
+		authGroup.Use(AuthRequiredMiddleware(authClient))
 
 		authGroup.POST("/send", messagingHandler.SendMessage)
 		authGroup.GET("/messages", messagingHandler.GetMessages)
@@ -36,7 +35,7 @@ func NewRouter(messagingHandler *MessagingHandler, authClient *auth_proto.TokenV
 	return engine
 }
 
-func AuthRequiredMiddleware(authClient auth_proto.TokenVerifyServiceClient) gin.HandlerFunc {
+func AuthRequiredMiddleware(authClient *auth_verify_service.AuthVerifyService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := c.GetHeader("Authorization")
 		if token == "" {
@@ -44,18 +43,24 @@ func AuthRequiredMiddleware(authClient auth_proto.TokenVerifyServiceClient) gin.
 			c.Abort()
 			return
 		}
-		req := &auth_proto.TokenVerificationRequest{
-			Token: token,
-		}
-		verifyResponse, err := authClient.VerifyToken(context.Background(), req)
+		IDUser, err := authClient.VerifyToken(context.Background(), token)
 		if err != nil {
-			c.AbortWithStatusJSON(401, gin.H{"error": "Unauthorized"})
+			c.AbortWithStatusJSON(401, gin.H{"error": err.Error})
 			return
 		}
-		if !verifyResponse.Verified {
-			c.AbortWithStatusJSON(401, gin.H{"error": "Unauthorized"})
-			return
-		}
+
+		// req := &auth_proto.TokenVerificationRequest{
+		// 	Token: token,
+		// }
+		// verifyResponse, err := authClient.VerifyToken(context.Background(), req)
+		// if err != nil {
+		// 	c.AbortWithStatusJSON(401, gin.H{"error": "Unauthorized"})
+		// 	return
+		// }
+		// if !verifyResponse.Verified {
+		// 	c.AbortWithStatusJSON(401, gin.H{"error": "Unauthorized"})
+		// 	return
+		// }
 
 		// if c.GetHeader("Authorization") != "123" { //todo auth
 		// 	c.AbortWithStatusJSON(401, gin.H{"error": "Unauthorized"})
@@ -63,11 +68,11 @@ func AuthRequiredMiddleware(authClient auth_proto.TokenVerifyServiceClient) gin.
 		// }
 		// IDUser, err := uuid.Parse("cf197cc1-3e93-476c-8b38-08f52cbe5a46")
 
-		IDUser, err := uuid.Parse(verifyResponse.UserId)
-		if err != nil {
-			c.AbortWithStatusJSON(401, gin.H{"error": "Unauthorized"})
-			return
-		}
+		// IDUser, err := uuid.Parse(verifyResponse.UserId)
+		// if err != nil {
+		// 	c.AbortWithStatusJSON(401, gin.H{"error": "Unauthorized"})
+		// 	return
+		// }
 		c.Set("user_id", IDUser)
 		c.Next()
 	}
