@@ -12,9 +12,7 @@ import (
 	user_http "github.com/lameroot/msa-messenger/internal/user/controller/http"
 	user_repository_psql "github.com/lameroot/msa-messenger/internal/user/repository/user/psql"
 	user_usecase "github.com/lameroot/msa-messenger/internal/user/usecase"
-	auth_proto "github.com/lameroot/msa-messenger/pkg/api/auth"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	auth_verify_service "github.com/lameroot/msa-messenger/pkg/auth"
 )
 
 func loadEnv() {
@@ -43,20 +41,26 @@ func main() {
 	userService := user_usecase.NewUserService(persistentRepository)
 
 	// Create grpc client
-	hostPortAuthGrpcServer := os.Getenv("AUTH_GRPC_SERVER")
-	conn, err := grpc.NewClient(hostPortAuthGrpcServer, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	auth_verify_service, err := auth_verify_service.NewAuthVerifyService()
 	if err != nil {
-		log.Fatalf("did not connect: %v", err)
+		log.Fatalf("Failed to create AuthVerifyService: %v", err)
 	}
-	defer conn.Close()
-	log.Default().Println("Grpc auth client successfully created and connected to host ", hostPortAuthGrpcServer)
-	authClient := auth_proto.NewTokenVerifyServiceClient(conn)
+	defer auth_verify_service.Close()
+
+	// hostPortAuthGrpcServer := os.Getenv("AUTH_GRPC_SERVER")
+	// conn, err := grpc.NewClient(hostPortAuthGrpcServer, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	// if err != nil {
+	// 	log.Fatalf("did not connect: %v", err)
+	// }
+	// defer conn.Close()
+	// log.Default().Println("Grpc auth client successfully created and connected to host ", hostPortAuthGrpcServer)
+	// authClient := auth_proto.NewTokenVerifyServiceClient(conn)
 
 	// Create user handler
 	userHandler := user_http.NewUserHandler(userService)
 
 	// Create server
-	router := user_http.NewRouter(userHandler, &authClient)
+	router := user_http.NewRouter(userHandler, auth_verify_service)
 
 	// Start the server
 	hostPortUserHttpServer := os.Getenv("USER_HTTP_HOST_PORT")

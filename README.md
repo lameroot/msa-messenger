@@ -52,7 +52,7 @@ kubectl apply -f deploy/kuber/db/db-service.yaml
 ➜ kubectl get pods
 NAME                                           READY   STATUS    RESTARTS   AGE
 msa-messenger-db-deployment-5798b7f448-h2kll   1/1     Running   0          40s
-➜ kubectl exec -it msa-messenger-db-deployment-5798b7f448-h2kll  -- psql -h localhost -U messenger --password  -p 5432 messenger 
+➜ kubectl exec -it msa-messenger-db-deployment-5798b7f448-52pjx  -- psql -h localhost -U messenger --password  -p 5432 messenger 
 Password: messenger
 psql (12.4 (Debian 12.4-1.pgdg100+1))
 Type "help" for help.
@@ -64,11 +64,10 @@ messenger=# select * from users;
 
 messenger=# 
 ```
-2. Создать config, deployment, servoce для приложения
+2. Создать config, deployment, service для приложения
 ```
 ➜ kubectl apply -f deploy/kuber/config.yaml 
 ➜ kubectl apply -f deploy/kuber/deployments.yaml
-➜ kubectl apply -f deploy/kuber/services.yaml
 
 deployment.apps/msa-messenger-user-deployment created
 deployment.apps/msa-messenger-auth-deployment created
@@ -83,7 +82,7 @@ msa-messenger-user-deployment-78c9b6b4c6-kndv6        1/1     Running   0       
 ```
 3. Создать service для приложения
 ```
-➜  msa-messenger git:(main) ✗ kubectl apply -f deploy/kuber/services.yaml
+➜ kubectl apply -f deploy/kuber/services.yaml
 service/msa-messenger-user-service created
 service/msa-messenger-auth-service created
 service/msa-messenger-messaging-service created
@@ -108,15 +107,15 @@ Handling connection for 8090
 
 4. Добавить Ingress
 ```
-➜  msa-messenger git:(main) ✗ minikube addons enable ingress
+➜ minikube addons enable ingress
 
-➜  msa-messenger git:(main) ✗ kubectl get pods -n ingress-nginx
+➜ kubectl get pods -n ingress-nginx
 NAME                                        READY   STATUS      RESTARTS      AGE
 ingress-nginx-admission-create-fg7kt        0/1     Completed   0             181d
 ingress-nginx-admission-patch-7vckq         0/1     Completed   1             181d
 ingress-nginx-controller-7799c6795f-5vbng   1/1     Running     6 (27m ago)   181d
 
-➜  msa-messenger git:(main) ✗ kubectl apply -f deploy/kuber/ingress.yaml 
+➜ kubectl apply -f deploy/kuber/ingress.yaml 
 ingress.networking.k8s.io/msa-messenger-ingress configured
 ```
 
@@ -248,4 +247,32 @@ curl --location --request GET 'http://app.test.com/messaging/messages' \
     "sent_time": 1729802370
   }
 ]
+```
+
+## Testing
+Mockery
+```
+go install github.com/vektra/mockery/v2@latest
+```
+
+### Generate mocks
+```
+go generate ./...
+```
+
+### Тесты
+1. Важно указать в начале теста t.Parallel()
+2. Создаем type args struct {} , которая будет описывать переменные для запроса метода, который тестируем
+3. tests := []struct{
+    name string //название теста
+    args args //аргументы
+    want *тип ответа //какой ответ будет возвращаться 
+    assertErr assert.ErrorAssertionFunc //какая будет ошибка возвращаться
+    mock func(t *testing.T) //вернуть объект с мокированными сущностями
+}
+### Запускаем тесты
+
+Minimock
+```
+go install github.com/gojuno/minimock/v3/cmd/minimock@latest
 ```
