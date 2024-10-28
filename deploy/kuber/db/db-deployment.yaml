@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: msa-messenger-db-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: msa-messenger-db
+  template:
+    metadata:
+      labels:
+        app: msa-messenger-db
+    spec:
+      volumes:
+        - name: msa-db-storage
+          persistentVolumeClaim:
+            claimName: msa-db-pvc
+      containers:
+      - name: msa-messenger-db
+        imagePullPolicy: "Never"
+        image: msa-messenger-db:latest
+        # env:
+        #   - name: POSTGRES_USER
+        #     value: messenger
+        #   - name: POSTGRES_PASSWORD
+        #     value: messenger
+        #   - name: POSTGRES_DB
+        #     value: messenger
+        #   - name: POSTGRES_INITDB_ARGS
+        #     value: --encoding=UTF8
+        #   - name: POSTGRES_HOST_AUTH_METHOD
+        #     value: password
+        #   - name: PGDATA
+        #     value: /data/
+        envFrom:
+        - configMapRef:
+            name: msa-db-config
+        ports:
+        - containerPort: 5432
+        resources:
+          limits:
+            memory: "5024Mi"
+            cpu: "10m"
+          requests:
+            memory: "1024Mi"
+            cpu: "5m"
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1

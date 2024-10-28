@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package auth_proto;
+
+import "api/auth/messages.proto";
+
+option go_package = "pkg/api/auth-proto";
+
+service TokenVerifyService {
+    rpc VerifyToken(TokenVerificationRequest) returns (TokenVerificationResponse);
+}

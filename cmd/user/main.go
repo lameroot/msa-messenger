@@ -1,40 +1,66 @@
 package main
 
 import (
-	"net/http"
+	"log"
+	"os"
+	"path/filepath"
 
-	"github.com/gin-gonic/gin"
+	//user_http "msa-messenger/internal/user/controller/http"
+
+	"github.com/joho/godotenv"
+
+	user_http "github.com/lameroot/msa-messenger/internal/user/controller/http"
+	user_repository_psql "github.com/lameroot/msa-messenger/internal/user/repository/user/psql"
+	user_usecase "github.com/lameroot/msa-messenger/internal/user/usecase"
+	auth_proto "github.com/lameroot/msa-messenger/pkg/api/auth"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
+func loadEnv() {
+	// Init config
+	dir, _ := os.Getwd()
+	envPath := filepath.Join(dir, "configs", ".env")
+	err := godotenv.Load(envPath)
+	if err != nil {
+		log.Default().Print("Error loading .env file: ", err)
+	}
+}
+
 func main() {
-	r := gin.Default()
+	// Init config
+	log.Default().Print("Start load configs")
+	loadEnv()
+	log.Default().Print("Loaded configs: ", os.Getenv("DB_POSTGRES_URL"))
 
-	// Readiness probe
-	r.GET("/ready", readinessHandler)
+	// Init database
+	dbURL := os.Getenv("DB_POSTGRES_URL")
+	persistentRepository, err := user_repository_psql.NewPostgresUserRepository(dbURL)
+	if err != nil {
+		log.Fatalf("Failed to initialize auth service: %v", err)
+	}
 
-	// Liveness probe
-	r.GET("/health", livenessHandler)
+	userService := user_usecase.NewUserService(persistentRepository)
 
-	// Запуск сервера на порту 8080
-	r.Run(":8080")
-}
+	// Create grpc client
+	hostPortAuthGrpcServer := os.Getenv("AUTH_GRPC_SERVER")
+	conn, err := grpc.NewClient(hostPortAuthGrpcServer, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("did not connect: %v", err)
+	}
+	defer conn.Close()
+	log.Default().Println("Grpc auth client successfully created and connected to host ", hostPortAuthGrpcServer)
+	authClient := auth_proto.NewTokenVerifyServiceClient(conn)
 
-func readinessHandler(c *gin.Context) {
-	// Здесь вы можете добавить логику для проверки готовности вашего приложения
-	// Например, проверка подключения к базе данных, доступность внешних сервисов и т.д.
+	// Create user handler
+	userHandler := user_http.NewUserHandler(userService)
 
-	// В этом примере мы просто возвращаем успешный статус
-	c.JSON(http.StatusOK, gin.H{
-		"status": "user module ready",
-	})
-}
+	// Create server
+	router := user_http.NewRouter(userHandler, &authClient)
 
-func livenessHandler(c *gin.Context) {
-	// Здесь вы можете добавить логику для проверки жизнеспособности вашего приложения
-	// Например, проверка критических компонентов, отсутствие deadlock'ов и т.д.
-
-	// В этом примере мы просто возвращаем успешный статус
-	c.JSON(http.StatusOK, gin.H{
-		"status": "user module alive",
-	})
+	// Start the server
+	hostPortUserHttpServer := os.Getenv("USER_HTTP_HOST_PORT")
+	if err := router.Run(hostPortUserHttpServer); err != nil {
+		log.Fatalf("Failed to start user server: %v", err)
+	}
 }
