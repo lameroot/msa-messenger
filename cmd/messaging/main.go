@@ -40,7 +40,7 @@ func main() {
 	notificationService := messaging_notification.NewInMemmoryNotificationService()
 
 	// Create grpc client
-	auth_verify_service, err := auth_verify_service.NewAuthVerifyService()
+	auth_verify_service, err := auth_verify_service.NewAuthVerifyService(nil)
 	if err != nil {
 		log.Fatalf("Failed to create AuthVerifyService: %v", err)
 	}

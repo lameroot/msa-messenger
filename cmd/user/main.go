@@ -41,20 +41,11 @@ func main() {
 	userService := user_usecase.NewUserService(persistentRepository)
 
 	// Create grpc client
-	auth_verify_service, err := auth_verify_service.NewAuthVerifyService()
+	auth_verify_service, err := auth_verify_service.NewAuthVerifyService(nil)
 	if err != nil {
 		log.Fatalf("Failed to create AuthVerifyService: %v", err)
 	}
 	defer auth_verify_service.Close()
-
-	// hostPortAuthGrpcServer := os.Getenv("AUTH_GRPC_SERVER")
-	// conn, err := grpc.NewClient(hostPortAuthGrpcServer, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	// if err != nil {
-	// 	log.Fatalf("did not connect: %v", err)
-	// }
-	// defer conn.Close()
-	// log.Default().Println("Grpc auth client successfully created and connected to host ", hostPortAuthGrpcServer)
-	// authClient := auth_proto.NewTokenVerifyServiceClient(conn)
 
 	// Create user handler
 	userHandler := user_http.NewUserHandler(userService)
