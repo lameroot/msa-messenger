@@ -2,6 +2,7 @@ package auth_repository_psql
 
 import (
 	"database/sql"
+	"log"
 
 	_ "github.com/lib/pq"
 
@@ -22,4 +23,9 @@ func NewPostgresAuthRepository(dbURL string) (auth_usecase.PersistentRepository,
 		return nil, err
 	}
 	return &PostgresAuthRepository{db: db}, nil
+}
+
+func (d *PostgresAuthRepository) Close() {
+	log.Default().Println("Close PostgresAuthRepository")
+	d.db.Close()
 }

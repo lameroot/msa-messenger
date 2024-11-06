@@ -2,6 +2,7 @@ package user_repository_psql
 
 import (
 	"database/sql"
+	"log"
 
 	user_usecase "github.com/lameroot/msa-messenger/internal/user/usecase"
 	_ "github.com/lib/pq"
@@ -38,4 +39,9 @@ func NewPostgresUserRepository(dbURL string) (user_usecase.PersistentRepository,
 		return nil, err
 	}
 	return &PosgresUserRepository{db: db}, nil
+}
+
+func (d *PosgresUserRepository) Close() {
+	log.Default().Println("Close PersistentRepository")
+	d.db.Close()
 }

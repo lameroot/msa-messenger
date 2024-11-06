@@ -1,10 +1,15 @@
 package main
 
 import (
+	"context"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
+	"syscall"
+	"time"
 
+	"github.com/ds248a/closer"
 	"github.com/joho/godotenv"
 	messaging_notification "github.com/lameroot/msa-messenger/internal/messaging/adapters/notification"
 	messaging_http "github.com/lameroot/msa-messenger/internal/messaging/controller"
@@ -24,6 +29,7 @@ func loadEnv() {
 }
 
 func main() {
+	closer.NewCloser()
 	// Init config
 	log.Default().Print("Start load configs for messaging")
 	loadEnv()
@@ -32,28 +38,24 @@ func main() {
 	// Init database
 	dbURL := os.Getenv("DB_POSTGRES_URL")
 	persistentRepository, err := messaging_repository_psql.NewPostgresMessagingRepository(dbURL)
+	closer.Add(persistentRepository.Close)
 	if err != nil {
 		log.Fatalf("Failed to initialize auth service: %v", err)
 	}
 
 	// Init notification service
 	notificationService := messaging_notification.NewInMemmoryNotificationService()
+	closer.Add(notificationService.Close)
 
 	// Create grpc client
 	auth_verify_service, err := auth_verify_service.NewAuthVerifyService(nil)
 	if err != nil {
 		log.Fatalf("Failed to create AuthVerifyService: %v", err)
 	}
-	defer auth_verify_service.Close()
-
-	// hostPortAuthGrpcServer := os.Getenv("AUTH_GRPC_SERVER")
-	// conn, err := grpc.NewClient(hostPortAuthGrpcServer, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	// if err != nil {
-	// 	log.Fatalf("did not connect: %v", err)
-	// }
-	// defer conn.Close()
-	// log.Default().Println("Grpc auth client successfully created and connected to host ", hostPortAuthGrpcServer)
-	// authClient := auth_proto.NewTokenVerifyServiceClient(conn)
+	closer.Add(func() {
+		log.Default().Println("Close auth_verify_service")
+		auth_verify_service.Close()
+	})
 
 	messagingService := messaging_usecase.NewMessagingService(persistentRepository, notificationService)
 	messagingHandler := messaging_http.NewMessagingHandler(messagingService)
@@ -61,8 +63,22 @@ func main() {
 
 	// Start the server
 	hostPortMessagingHttpServer := os.Getenv("MESSAGING_HTTP_HOST_PORT")
-	if err := messagingRouter.Run(hostPortMessagingHttpServer); err != nil {
-		log.Fatalf("Failed to start messaing server: %v", err)
+	httpSrv := &http.Server {
+		Addr: hostPortMessagingHttpServer,
+		Handler: messagingRouter,
 	}
-
+	go func ()  {
+		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Failed to start messaing server: %v", err)
+		}
+	}()
+	
+	ctxWithTimeout, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
+	defer cancel()
+	closer.Add(func() {
+		log.Default().Println("Close http")
+		httpSrv.Shutdown(ctxWithTimeout)
+	})
+	closer.ListenSignal(syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
+	log.Default().Println("Close all")
 }

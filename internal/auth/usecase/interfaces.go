@@ -11,6 +11,7 @@ type (
 		CreateRefreshToken(user *auth_models.User) (string, error)
 		ValidateAccessToken(tokenString string) (*auth_models.JWTClaims, error)
 		ValidateRefreshToken(tokenString string) (*auth_models.JWTClaims, error)
+		Close()
 	}
 	PersistentRepository interface {
 		GetUserByEmail(email string) (*auth_models.User, error)
@@ -18,5 +19,6 @@ type (
 		GetUserByNickname(nickname string) (*auth_models.User, error)
 		UpdateUser(id uuid.UUID, avatart_url, info string) (*auth_models.User, error)
 		SaveUser(user *auth_models.User) (*auth_models.User, error)
+		Close()
 	}
 )

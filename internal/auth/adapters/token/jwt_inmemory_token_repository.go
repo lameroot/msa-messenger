@@ -2,6 +2,7 @@ package adapters_token
 
 import (
 	"errors"
+	"log"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -64,4 +65,8 @@ func (r *JwtInMemoryTokenRepository) validateToken(tokenString, secret string) (
 	}
 
 	return nil, errors.New("invalid token")
+}
+
+func (r *JwtInMemoryTokenRepository) Close() {
+	log.Default().Println("Close JwtInMemoryTokenRepository")
 }

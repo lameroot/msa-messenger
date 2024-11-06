@@ -12,5 +12,6 @@ type (
 		AcceptFriend(IDUser uuid.UUID, IDFriend uuid.UUID) error
 		RejectFriend(IDUser uuid.UUID, IDFriend uuid.UUID) error
 		GetFriends(IDUser uuid.UUID) ([]user_models.Friend, error)
+		Close()
 	}
 )

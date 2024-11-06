@@ -20,6 +20,7 @@ import (
 type AuthVerifyService struct {
 	authClient auth_proto.TokenVerifyServiceClient
 	conn       *grpc.ClientConn
+	authVerifyConfig AuthVerifyConfig
 }
 
 type AuthVerifyConfig struct {
@@ -34,6 +35,8 @@ type AuthVerifyConfig struct {
 	СircuitBreakerIsSuccessful      func(err error) bool
 	RetryMaxRetries                 int
 	RetryBaseDelay                  time.Duration
+	DialTimeout						time.Duration
+	ReadTimeout						time.Duration
 }
 
 var DefaultAuthVerifyConfig = AuthVerifyConfig{
@@ -52,6 +55,8 @@ var DefaultAuthVerifyConfig = AuthVerifyConfig{
 	},
 	RetryMaxRetries: 3,
 	RetryBaseDelay: 100 * time.Millisecond,
+	DialTimeout: 5 * time.Second,
+	ReadTimeout: 10 * time.Second,
 }
 
 func NewAuthVerifyService(authVerifyConfig *AuthVerifyConfig) (*AuthVerifyService, error) {
@@ -80,10 +85,12 @@ func NewAuthVerifyService(authVerifyConfig *AuthVerifyConfig) (*AuthVerifyServic
 	return &AuthVerifyService{
 		authClient: authClient,
 		conn:       conn,
+		authVerifyConfig: *authVerifyConfig,
 	}, nil
 }
 
 func (a *AuthVerifyService) Close() error {
+	log.Default().Println("Close AuthVerifyService")
 	return a.conn.Close()
 }
 
@@ -170,7 +177,10 @@ func (a *AuthVerifyService) VerifyToken(ctx context.Context, token string) (*uui
 		Token: token,
 	}
 
-	verifyResponse, err := a.authClient.VerifyToken(ctx, req)
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, a.authVerifyConfig.ReadTimeout)
+	defer cancel()
+
+	verifyResponse, err := a.authClient.VerifyToken(ctxWithTimeout, req)
 	if err != nil {
 		return nil, &ErrorVerifyToken{Error: "Unauthorized :" + err.Error()}
 	}

@@ -1,6 +1,8 @@
 package messaging_notification
 
 import (
+	"log"
+
 	"github.com/google/uuid"
 	messaging_models "github.com/lameroot/msa-messenger/internal/messaging/models"
 	messaging_usecase "github.com/lameroot/msa-messenger/internal/messaging/usecase"
@@ -24,4 +26,8 @@ func (s *InMemmoryNotificationService) SendNotification(IDFrom uuid.UUID, IDTo u
 	s.messages = append(s.messages, message)
 
 	return "OK", nil
+}
+
+func (s *InMemmoryNotificationService) Close() {
+	log.Default().Println("Close InMemmoryNotificationService")
 }
