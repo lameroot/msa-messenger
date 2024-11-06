@@ -6,8 +6,10 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"syscall"
 	"time"
 
+	"github.com/ds248a/closer"
 	adapters_token "github.com/lameroot/msa-messenger/internal/auth/adapters/token"
 	auth_http "github.com/lameroot/msa-messenger/internal/auth/controller/http"
 	auth_models "github.com/lameroot/msa-messenger/internal/auth/models"
@@ -39,6 +41,7 @@ func loadEnv() {
 // @host localhost:8080
 // @BasePath /
 func main() {
+	closer.NewCloser()
 	// Init config
 	loadEnv()
 	log.Default().Print("Loaded configs: ", os.Getenv("DB_POSTGRES_URL"))
@@ -51,11 +54,13 @@ func main() {
 		RefreshTokenExpiry: 7 * 24 * time.Hour,
 	}
 	tokenRepository := adapters_token.NewJwtInMemoryTokenRepository(tokenConfig)
+	closer.Add(tokenRepository.Close)
 	log.Default().Print("Loaded JWT config")
 
 	// Init database
 	dbURL := os.Getenv("DB_POSTGRES_URL")
 	persistentRepository, err := auth_repository_psql.NewPostgresAuthRepository(dbURL)
+	closer.Add(persistentRepository.Close)
 	if err != nil {
 		log.Fatalf("Failed to initialize auth service: %v", err)
 	}
@@ -74,6 +79,7 @@ func main() {
 	hostPortAuthHttpServer := os.Getenv("AUTH_HTTP_HOST_PORT")
 	go func() {
 		defer wg.Done()
+		closer.Add(wg.Done)
 
 		if err := router.Run(hostPortAuthHttpServer); err != nil {
 			log.Fatalf("Failed to start auth server: %v", err)
@@ -84,6 +90,7 @@ func main() {
 	hostPortAuthGrpcServer := os.Getenv("AUTH_GRPC_HOST_PORT")
 	wg.Add(1)
 	go func() {
+		closer.Add(wg.Done)
 		defer wg.Done()
 
 		lis, err := net.Listen("tcp", hostPortAuthGrpcServer)
@@ -101,6 +108,8 @@ func main() {
 		}
 	}()
 
+	closer.ListenSignal(syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
+	log.Default().Println("Close all")
 	wg.Wait()
-
+	
 }

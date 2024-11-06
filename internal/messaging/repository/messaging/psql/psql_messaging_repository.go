@@ -34,3 +34,7 @@ func NewPostgresMessagingRepository(dbURL string) (messaging_usecase.PersistentR
 	}
 	return &PostgresMessagingRepository{db}, nil
 }
+
+func (d *PostgresMessagingRepository) Close() {
+	d.db.Close()
+}

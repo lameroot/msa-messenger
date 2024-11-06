@@ -8,6 +8,10 @@ import (
 	auth_verify_service "github.com/lameroot/msa-messenger/pkg/auth"
 )
 
+type HttpRoute struct {
+	engine *gin.Engine
+}
+
 func NewRouter(userHandler *UserHandler, authClient *auth_verify_service.AuthVerifyService) *gin.Engine {
 	var engine = gin.New()
 	// Options
@@ -51,30 +55,6 @@ func AuthRequiredMiddleware(authClient *auth_verify_service.AuthVerifyService) g
 			return
 		}
 
-		// req := &auth_proto.TokenVerificationRequest{
-		// 	Token: token,
-		// }
-		// verifyResponse, err := authClient.VerifyToken(context.Background(), req)
-		// if err != nil {
-		// 	c.AbortWithStatusJSON(401, gin.H{"error": "Unauthorized"})
-		// 	return
-		// }
-		// if !verifyResponse.Verified {
-		// 	c.AbortWithStatusJSON(401, gin.H{"error": "Unauthorized"})
-		// 	return
-		// }
-
-		// if c.GetHeader("Authorization") != "123" { //todo auth
-		// 	c.AbortWithStatusJSON(401, gin.H{"error": "Unauthorized"})
-		// 	return
-		// }
-		// IDUser, err := uuid.Parse("cf197cc1-3e93-476c-8b38-08f52cbe5a46")
-		
-		// IDUser, err := uuid.Parse(verifyResponse.UserId)
-		// if err != nil {
-		// 	c.AbortWithStatusJSON(401, gin.H{"error": "Unauthorized"})
-		// 	return
-		// }
 		c.Set("user_id", IDUser)
 		c.Next()
 	}
